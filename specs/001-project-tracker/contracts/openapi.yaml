@@ -1,0 +1,852 @@
+openapi: 3.0.3
+info:
+  title: Project & Task Management System API
+  description: |
+    REST API for managing tasks, issues, users, and dependencies in a project management system.
+    
+    **Key Features**:
+    - Task management (CRUD + search/filter)
+    - Issue tracking with task linking
+    - User registration and authentication
+    - Task dependency management (Gantt chart)
+    - Real-time updates via WebSocket (see websocket.md)
+    
+    **Authentication**: Bearer JWT tokens (15-minute expiration, refresh via /auth/refresh)
+    
+    **Optimistic Locking**: All updates require `_version` field; returns 409 on mismatch
+  version: 1.0.0
+  contact:
+    name: Project Tracker Team
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://api.projecttracker.example.com/api
+    description: Production server
+
+tags:
+  - name: Auth
+    description: User registration and authentication
+  - name: Tasks
+    description: Task management operations
+  - name: Issues
+    description: Issue tracking operations
+  - name: Users
+    description: User profile operations
+  - name: Dependencies
+    description: Task dependency management
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ====================
+  # Authentication
+  # ====================
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      description: Create a new user account with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  example: Alice Johnson
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: JWT access token (15 min expiry)
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Email already in use
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      description: Authenticate with email/password and receive JWT access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: httpOnly refresh token (7 days)
+              schema:
+                type: string
+                example: refreshToken=<token>; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Get new access token using refresh token from httpOnly cookie
+      security: []
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '401':
+          description: Invalid or expired refresh token
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout user
+      description: Clear refresh token cookie
+      responses:
+        '204':
+          description: Logout successful
+
+  # ====================
+  # Tasks
+  # ====================
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List all tasks
+      description: Get paginated list of tasks with optional search and filtering
+      parameters:
+        - name: q
+          in: query
+          description: Search query (matches title and description)
+          schema:
+            type: string
+          example: database setup
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [To Do, In Progress, Complete]
+        - name: creatorId
+          in: query
+          description: Filter by creator user ID
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          description: Filter tasks starting on or after this date
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Filter tasks ending on or before this date
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          description: Results per page
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  total:
+                    type: integer
+                    description: Total matching tasks
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+    post:
+      tags: [Tasks]
+      summary: Create new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+
+    get:
+      tags: [Tasks]
+      summary: Get task by ID
+      responses:
+        '200':
+          description: Task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailed'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Tasks]
+      summary: Update task
+      description: Update task with optimistic locking (requires _version field)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/TaskInput'
+                - type: object
+                  required: [_version]
+                  properties:
+                    _version:
+                      type: integer
+                      description: Current version for optimistic locking
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Version mismatch (optimistic lock conflict)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Version mismatch
+                  currentVersion:
+                    type: integer
+                  serverData:
+                    $ref: '#/components/schemas/Task'
+
+    delete:
+      tags: [Tasks]
+      summary: Delete task
+      description: Permanently delete task and cascade to dependencies
+      responses:
+        '204':
+          description: Task deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ====================
+  # Issues
+  # ====================
+  /issues:
+    get:
+      tags: [Issues]
+      summary: List all issues
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Open, Resolved]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [Low, Medium, High]
+        - name: creatorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Issues retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Issue'
+                  total:
+                    type: integer
+
+    post:
+      tags: [Issues]
+      summary: Create new issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueInput'
+      responses:
+        '201':
+          description: Issue created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+
+  /issues/{issueId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Issues]
+      summary: Get issue by ID
+      responses:
+        '200':
+          description: Issue retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueDetailed'
+
+    patch:
+      tags: [Issues]
+      summary: Update issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueInput'
+      responses:
+        '200':
+          description: Issue updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+
+    delete:
+      tags: [Issues]
+      summary: Delete issue
+      responses:
+        '204':
+          description: Issue deleted successfully
+
+  # ====================
+  # Task-Issue Links
+  # ====================
+  /tasks/{taskId}/issues:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+
+    get:
+      tags: [Tasks]
+      summary: Get issues linked to task
+      responses:
+        '200':
+          description: Linked issues retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+
+    post:
+      tags: [Tasks]
+      summary: Link issue to task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issueId]
+              properties:
+                issueId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Issue linked to task
+        '404':
+          description: Task or issue not found
+
+  /tasks/{taskId}/issues/{issueId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+      - name: issueId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      tags: [Tasks]
+      summary: Unlink issue from task
+      responses:
+        '204':
+          description: Issue unlinked from task
+
+  # ====================
+  # Dependencies
+  # ====================
+  /dependencies:
+    get:
+      tags: [Dependencies]
+      summary: Get all task dependencies
+      description: Retrieve all dependency relationships (for Gantt chart)
+      responses:
+        '200':
+          description: Dependencies retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskDependency'
+
+    post:
+      tags: [Dependencies]
+      summary: Create task dependency
+      description: Create dependency relationship (from Gantt drag-and-connect)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromTaskId, toTaskId]
+              properties:
+                fromTaskId:
+                  type: string
+                  format: uuid
+                  description: Predecessor task (must complete first)
+                toTaskId:
+                  type: string
+                  format: uuid
+                  description: Successor task (depends on predecessor)
+      responses:
+        '201':
+          description: Dependency created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDependency'
+        '400':
+          description: Invalid dependency (circular or self-reference)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Circular dependency detected
+
+  /dependencies/{dependencyId}:
+    parameters:
+      - name: dependencyId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      tags: [Dependencies]
+      summary: Delete task dependency
+      responses:
+        '204':
+          description: Dependency deleted successfully
+
+  # ====================
+  # Users
+  # ====================
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users
+      description: Get list of all registered users (for filters/assignees)
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+# ====================
+# Components
+# ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [To Do, In Progress, Complete]
+        creatorId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        version:
+          type: integer
+          description: Optimistic lock version
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskDetailed:
+      allOf:
+        - $ref: '#/components/schemas/Task'
+        - type: object
+          properties:
+            creator:
+              $ref: '#/components/schemas/User'
+            dependencies:
+              type: object
+              properties:
+                predecessors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                successors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+            linkedIssues:
+              type: array
+              items:
+                $ref: '#/components/schemas/Issue'
+
+    TaskInput:
+      type: object
+      required: [title, status]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        status:
+          type: string
+          enum: [To Do, In Progress, Complete]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    Issue:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [Open, Resolved]
+        severity:
+          type: string
+          enum: [Low, Medium, High]
+        creatorId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    IssueDetailed:
+      allOf:
+        - $ref: '#/components/schemas/Issue'
+        - type: object
+          properties:
+            creator:
+              $ref: '#/components/schemas/User'
+            linkedTasks:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                  status:
+                    type: string
+
+    IssueInput:
+      type: object
+      required: [title, description]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum: [Open, Resolved]
+          default: Open
+        severity:
+          type: string
+          enum: [Low, Medium, High]
+          default: Medium
+
+    TaskDependency:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fromTaskId:
+          type: string
+          format: uuid
+          description: Predecessor task ID
+        toTaskId:
+          type: string
+          format: uuid
+          description: Successor task ID
+        createdAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+        details:
+          type: object
+          description: Additional error context
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Validation failed
+            details:
+              title: Title is required
+
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Unauthorized
+            code: INVALID_TOKEN
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Task not found
