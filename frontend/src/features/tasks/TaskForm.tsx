@@ -4,6 +4,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { Task, CreateTaskInput, UpdateTaskInput, TaskStatus, Phase } from '../../types/task';
 import { useFunctionStore } from '../../store/functionStore';
 import { useUserStore } from '../../store/userStore';
+import { useProjectStore } from '../../store/projectStore';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -28,12 +29,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { functions, fetchFunctions } = useFunctionStore();
   const { users, fetchUsers } = useUserStore();
+  const { projects, fetchProjects, currentProjectId } = useProjectStore();
 
   useEffect(() => {
-    console.log('[TaskForm] Fetching functions and users...');
+    console.log('[TaskForm] Fetching functions, users, and projects...');
     fetchFunctions();
     fetchUsers();
-  }, [fetchFunctions, fetchUsers]);
+    fetchProjects({ status: 'Active' });
+  }, [fetchFunctions, fetchUsers, fetchProjects]);
 
   useEffect(() => {
     console.log('[TaskForm] Users state updated:', users);
@@ -49,14 +52,19 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         phase: task.phase,
         functionId: task.functionId,
         assigneeId: task.assigneeId,
+        projectId: task.projectId,
         dateRange: task.startDate && task.endDate
           ? [dayjs(task.startDate), dayjs(task.endDate)]
           : undefined,
       });
     } else {
+      // For new tasks, set default project if one is selected
       form.resetFields();
+      if (currentProjectId) {
+        form.setFieldsValue({ projectId: currentProjectId });
+      }
     }
-  }, [task, form]);
+  }, [task, form, currentProjectId]);
 
   const handleSubmit = async (values: any) => {
     setIsSubmitting(true);
@@ -70,6 +78,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         startDate: startDate ? startDate.format('YYYY-MM-DD') : undefined,
         endDate: endDate ? endDate.format('YYYY-MM-DD') : undefined,
         phase: values.phase || undefined,
+        functionId: values.functionId || undefined,
+        assigneeId: values.assigneeId || undefined,
+        projectId: values.projectId || undefined,
         functionId: values.functionId || undefined,
         assigneeId: values.assigneeId || undefined,
         ...(task && { version: task.version }), // Include version for updates
@@ -195,6 +206,24 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           {users.map((user) => (
             <Option key={user.id} value={user.id}>
               {user.name} ({user.email})
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
+
+      <Form.Item
+        name="projectId"
+        label="プロジェクト"
+      >
+        <Select
+          placeholder="プロジェクトを選択（任意）"
+          allowClear
+          showSearch
+          optionFilterProp="children"
+        >
+          {projects.map((project) => (
+            <Option key={project.id} value={project.id}>
+              {project.name}
             </Option>
           ))}
         </Select>

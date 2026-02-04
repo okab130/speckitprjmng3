@@ -22,9 +22,10 @@ export class TaskModel {
         end_date,
         phase,
         function_id,
-        assignee_id
+        assignee_id,
+        project_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING 
         id, 
         title, 
@@ -36,6 +37,7 @@ export class TaskModel {
         phase,
         function_id as "functionId",
         assignee_id as "assigneeId",
+        project_id as "projectId",
         version,
         created_at as "createdAt",
         updated_at as "updatedAt"`,
@@ -48,7 +50,8 @@ export class TaskModel {
         data.endDate || null,
         data.phase || null,
         data.functionId || null,
-        data.assigneeId || null
+        data.assigneeId || null,
+        data.projectId || null
       ]
     );
 
@@ -71,6 +74,7 @@ export class TaskModel {
         t.phase,
         t.function_id as "functionId",
         t.assignee_id as "assigneeId",
+        t.project_id as "projectId",
         t.version,
         t.created_at as "createdAt",
         t.updated_at as "updatedAt",
@@ -137,6 +141,12 @@ export class TaskModel {
     if (filters?.assigneeId) {
       queryText += ` AND t.assignee_id = $${paramIndex}`;
       params.push(filters.assigneeId);
+      paramIndex++;
+    }
+
+    if (filters?.projectId) {
+      queryText += ` AND t.project_id = $${paramIndex}`;
+      params.push(filters.projectId);
       paramIndex++;
     }
 

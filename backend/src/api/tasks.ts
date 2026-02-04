@@ -24,6 +24,7 @@ const createTaskSchema = z.object({
   phase: phaseEnum.optional(),
   functionId: z.string().uuid().optional(),
   assigneeId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) {
@@ -46,6 +47,7 @@ const updateTaskSchema = z.object({
   phase: phaseEnum.optional().nullable(),
   functionId: z.string().uuid().optional().nullable(),
   assigneeId: z.string().uuid().optional().nullable(),
+  projectId: z.string().uuid().optional().nullable(),
   version: z.number().int().positive('Version must be a positive integer'),
 }).refine(
   (data) => {
@@ -69,6 +71,7 @@ const taskFiltersSchema = z.object({
   phase: phaseEnum.optional(),
   functionId: z.string().uuid().optional(),
   assigneeId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
   groupByStatus: z.enum(['true', 'false']).optional(), // For Kanban board view
 });
 

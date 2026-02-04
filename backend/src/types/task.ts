@@ -12,6 +12,7 @@ export interface Task {
   phase?: Phase;
   functionId?: string;
   assigneeId?: string;
+  projectId?: string;
   version: number;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +37,7 @@ export interface CreateTaskInput {
   phase?: Phase;
   functionId?: string;
   assigneeId?: string;
+  projectId?: string;
 }
 
 export interface UpdateTaskInput {
@@ -47,6 +49,7 @@ export interface UpdateTaskInput {
   phase?: Phase;
   functionId?: string;
   assigneeId?: string;
+  projectId?: string;
   version: number; // Required for optimistic locking
 }
 
@@ -59,4 +62,5 @@ export interface TaskSearchFilters {
   phase?: Phase;
   functionId?: string;
   assigneeId?: string;
+  projectId?: string;
 }
