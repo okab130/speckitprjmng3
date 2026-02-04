@@ -8,7 +8,7 @@ interface IssueState {
   error: string | null;
   
   // Actions
-  fetchIssues: (filters?: { status?: string; severity?: string }) => Promise<void>;
+  fetchIssues: (filters?: { status?: string; severity?: string; projectId?: string }) => Promise<void>;
   fetchIssueById: (id: string) => Promise<Issue | null>;
   createIssue: (issue: Omit<Issue, 'id' | 'creatorId' | 'createdAt' | 'resolvedAt'>) => Promise<Issue>;
   updateIssue: (id: string, updates: Partial<Issue>) => Promise<Issue>;
@@ -37,6 +37,7 @@ export const useIssueStore = create<IssueState>((set) => ({
       const params = new URLSearchParams();
       if (filters?.status) params.append('status', filters.status);
       if (filters?.severity) params.append('severity', filters.severity);
+      if (filters?.projectId) params.append('projectId', filters.projectId);
       
       const response = await api.get(`/issues?${params.toString()}`);
       set({ issues: response.data, loading: false });

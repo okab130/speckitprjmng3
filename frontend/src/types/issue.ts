@@ -13,6 +13,7 @@ export interface Issue {
   createdAt: string;
   dueDate?: string;
   resolvedAt?: string;
+  projectId?: string;
 }
 
 export interface CreateIssueInput {
@@ -20,6 +21,7 @@ export interface CreateIssueInput {
   description: string;
   severity?: IssueSeverity;
   dueDate?: string;
+  projectId?: string;
 }
 
 export interface UpdateIssueInput {
@@ -28,6 +30,7 @@ export interface UpdateIssueInput {
   status?: IssueStatus;
   severity?: IssueSeverity;
   dueDate?: string;
+  projectId?: string;
 }
 
 export interface IssueSearchFilters {
@@ -35,4 +38,5 @@ export interface IssueSearchFilters {
   status?: IssueStatus;
   severity?: IssueSeverity;
   creatorId?: string;
+  projectId?: string;
 }

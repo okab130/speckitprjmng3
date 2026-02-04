@@ -16,7 +16,8 @@ export class IssueService {
     status: string,
     severity: string,
     creatorId: string,
-    dueDate?: Date
+    dueDate?: Date,
+    projectId?: string
   ): Promise<Issue> {
     // Validate status
     const validStatuses = ['To Do', 'In Progress', 'Complete'];
@@ -30,7 +31,7 @@ export class IssueService {
       throw new Error(`Invalid severity: ${severity}. Must be one of: ${validSeverities.join(', ')}`);
     }
 
-    return await IssueModel.create(title, description, status, severity, creatorId, dueDate);
+    return await IssueModel.create(title, description, status, severity, creatorId, dueDate, projectId);
   }
 
   /**
@@ -40,6 +41,7 @@ export class IssueService {
     status?: string;
     severity?: string;
     creatorId?: string;
+    projectId?: string;
   }): Promise<Issue[]> {
     return await IssueModel.findAll(filters);
   }
@@ -62,6 +64,7 @@ export class IssueService {
       status?: string;
       severity?: string;
       dueDate?: Date;
+      projectId?: string;
     }
   ): Promise<Issue | null> {
     // Validate status if provided

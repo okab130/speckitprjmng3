@@ -15,15 +15,16 @@ export class IssueModel {
     status: string,
     severity: string,
     creatorId: string,
-    dueDate?: Date
+    dueDate?: Date,
+    projectId?: string
   ): Promise<Issue> {
     const query = `
-      INSERT INTO prjmng3.issues (title, description, status, severity, creator_id, due_date)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, title, description, status, severity, creator_id, created_at, due_date, resolved_at
+      INSERT INTO prjmng3.issues (title, description, status, severity, creator_id, due_date, project_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, title, description, status, severity, creator_id, created_at, due_date, resolved_at, project_id
     `;
 
-    const result = await pool.query(query, [title, description, status, severity, creatorId, dueDate]);
+    const result = await pool.query(query, [title, description, status, severity, creatorId, dueDate, projectId]);
     
     return this.mapRowToIssue(result.rows[0]);
   }
@@ -35,9 +36,10 @@ export class IssueModel {
     status?: string;
     severity?: string;
     creatorId?: string;
+    projectId?: string;
   }): Promise<Issue[]> {
     let query = `
-      SELECT id, title, description, status, severity, creator_id, created_at, due_date, resolved_at
+      SELECT id, title, description, status, severity, creator_id, created_at, due_date, resolved_at, project_id
       FROM prjmng3.issues
       WHERE 1=1
     `;
@@ -62,6 +64,12 @@ export class IssueModel {
       paramIndex++;
     }
 
+    if (filters?.projectId) {
+      query += ` AND project_id = $${paramIndex}`;
+      params.push(filters.projectId);
+      paramIndex++;
+    }
+
     query += ' ORDER BY created_at DESC';
 
     const result = await pool.query(query, params);
@@ -74,7 +82,7 @@ export class IssueModel {
    */
   static async findById(id: string): Promise<Issue | null> {
     const query = `
-      SELECT id, title, description, status, severity, creator_id, created_at, due_date, resolved_at
+      SELECT id, title, description, status, severity, creator_id, created_at, due_date, resolved_at, project_id
       FROM prjmng3.issues
       WHERE id = $1
     `;
@@ -99,6 +107,7 @@ export class IssueModel {
       status?: string;
       severity?: string;
       dueDate?: Date;
+      projectId?: string;
     }
   ): Promise<Issue | null> {
     const fields: string[] = [];
@@ -143,6 +152,12 @@ export class IssueModel {
       paramIndex++;
     }
 
+    if (updates.projectId !== undefined) {
+      fields.push(`project_id = $${paramIndex}`);
+      values.push(updates.projectId);
+      paramIndex++;
+    }
+
     if (fields.length === 0) {
       return this.findById(id);
     }
@@ -153,7 +168,7 @@ export class IssueModel {
       UPDATE prjmng3.issues
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, title, description, status, severity, creator_id, created_at, due_date, resolved_at
+      RETURNING id, title, description, status, severity, creator_id, created_at, due_date, resolved_at, project_id
     `;
 
     const result = await pool.query(query, values);
@@ -194,6 +209,7 @@ export class IssueModel {
       createdAt: row.created_at,
       dueDate: row.due_date,
       resolvedAt: row.resolved_at,
+      projectId: row.project_id,
     };
   }
 }

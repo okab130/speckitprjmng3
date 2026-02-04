@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Button, message, DatePicker } from 'antd';
 import { Issue } from '../../types/issue';
+import { ProjectSelector } from '../projects/ProjectSelector';
+import { useProjectStore } from '../../store/projectStore';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -21,6 +23,13 @@ export const IssueForm: React.FC<IssueFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { currentProjectId } = useProjectStore();
+
+  useEffect(() => {
+    if (!initialValues?.projectId && currentProjectId) {
+      form.setFieldsValue({ projectId: currentProjectId });
+    }
+  }, [currentProjectId, initialValues?.projectId, form]);
 
   const handleSubmit = async (values: any) => {
     setLoading(true);
@@ -48,9 +57,11 @@ export const IssueForm: React.FC<IssueFormProps> = ({
         initialValues ? {
           ...initialValues,
           dueDate: initialValues.dueDate ? dayjs(initialValues.dueDate) : undefined,
+          projectId: initialValues.projectId || currentProjectId,
         } : {
           status: 'To Do',
           severity: 'Medium',
+          projectId: currentProjectId,
         }
       }
       onFinish={handleSubmit}
@@ -99,6 +110,10 @@ export const IssueForm: React.FC<IssueFormProps> = ({
           <Option value="Medium">中</Option>
           <Option value="High">高</Option>
         </Select>
+      </Form.Item>
+
+      <Form.Item label="プロジェクト" name="projectId">
+        <ProjectSelector />
       </Form.Item>
 
       <Form.Item

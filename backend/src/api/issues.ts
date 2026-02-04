@@ -18,6 +18,7 @@ const createIssueSchema = z.object({
   status: z.enum(['To Do', 'In Progress', 'Complete']).default('To Do'),
   severity: z.enum(['Low', 'Medium', 'High']).default('Medium'),
   dueDate: z.string().datetime().optional(),
+  projectId: z.string().uuid().optional(),
 });
 
 // Update issue schema
@@ -27,6 +28,7 @@ const updateIssueSchema = z.object({
   status: z.enum(['To Do', 'In Progress', 'Complete']).optional(),
   severity: z.enum(['Low', 'Medium', 'High']).optional(),
   dueDate: z.string().datetime().optional(),
+  projectId: z.string().uuid().optional(),
 });
 
 // Query filters schema
@@ -34,6 +36,7 @@ const issueFiltersSchema = z.object({
   status: z.enum(['To Do', 'In Progress', 'Complete']).optional(),
   severity: z.enum(['Low', 'Medium', 'High']).optional(),
   creatorId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
 });
 
 /**
@@ -46,7 +49,7 @@ router.post(
   validate(createIssueSchema),
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { title, description, status, severity, dueDate } = req.body;
+      const { title, description, status, severity, dueDate, projectId } = req.body;
       const creatorId = req.user!.userId;
 
       const issue = await IssueService.createIssue(
@@ -55,7 +58,8 @@ router.post(
         status || 'To Do',
         severity || 'Medium',
         creatorId,
-        dueDate ? new Date(dueDate) : undefined
+        dueDate ? new Date(dueDate) : undefined,
+        projectId
       );
 
       // Broadcast issue:created event
