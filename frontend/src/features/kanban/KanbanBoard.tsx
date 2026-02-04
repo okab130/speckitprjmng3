@@ -12,6 +12,8 @@ import { TaskDetail } from '../tasks/TaskDetail';
 import { IssueDetail } from '../issues/IssueDetail';
 import { useFunctionStore } from '../../store/functionStore';
 import { useUserStore } from '../../store/userStore';
+import { useProjectStore } from '../../store/projectStore';
+import { ProjectSelector } from '../projects/ProjectSelector';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -55,6 +57,7 @@ export const KanbanBoard: React.FC = () => {
 
   const { functions, fetchFunctions } = useFunctionStore();
   const { users, fetchUsers } = useUserStore();
+  const { currentProjectId, setCurrentProjectId } = useProjectStore();
 
   const [groupedTasks, setGroupedTasks] = useState<Record<TaskStatus, TaskWithCreator[]>>({
     'To Do': [],
@@ -81,13 +84,13 @@ export const KanbanBoard: React.FC = () => {
   const [functionFilter, setFunctionFilter] = useState<string | undefined>(undefined);
   const [assigneeFilter, setAssigneeFilter] = useState<string | undefined>(undefined);
 
-  // Load tasks and issues on mount
+  // Load tasks and issues on mount and when project changes
   useEffect(() => {
     loadTasks();
     loadIssues();
     fetchFunctions();
     fetchUsers();
-  }, []);
+  }, [currentProjectId]); // Reload when project changes
 
   const loadTasks = async () => {
     try {
@@ -124,8 +127,9 @@ export const KanbanBoard: React.FC = () => {
         const matchesPhase = !phaseFilter || task.phase === phaseFilter;
         const matchesFunction = !functionFilter || task.functionId === functionFilter;
         const matchesAssignee = !assigneeFilter || task.assigneeId === assigneeFilter;
+        const matchesProject = !currentProjectId || task.projectId === currentProjectId;
         
-        return matchesSearch && matchesPhase && matchesFunction && matchesAssignee;
+        return matchesSearch && matchesPhase && matchesFunction && matchesAssignee && matchesProject;
       })
       .forEach((task) => {
         if (grouped[task.status]) {
@@ -141,7 +145,7 @@ export const KanbanBoard: React.FC = () => {
     });
 
     setGroupedTasks(grouped);
-  }, [tasks, searchQuery, phaseFilter, functionFilter, assigneeFilter]);
+  }, [tasks, searchQuery, phaseFilter, functionFilter, assigneeFilter, currentProjectId]);
 
   // Update grouped issues when issues state changes
   useEffect(() => {
@@ -414,6 +418,11 @@ export const KanbanBoard: React.FC = () => {
       {/* Filters */}
       <Card style={{ marginBottom: 16 }}>
         <Space size="middle" wrap>
+          <ProjectSelector
+            value={currentProjectId}
+            onChange={setCurrentProjectId}
+            style={{ width: 200 }}
+          />
           <Input
             placeholder="Search tasks..."
             prefix={<SearchOutlined />}

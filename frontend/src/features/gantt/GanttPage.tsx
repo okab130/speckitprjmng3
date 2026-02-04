@@ -8,6 +8,8 @@ import { useIssueStore } from '../../store/issueStore';
 import { TaskStatus, Phase } from '../../types/task';
 import { useFunctionStore } from '../../store/functionStore';
 import { useUserStore } from '../../store/userStore';
+import { useProjectStore } from '../../store/projectStore';
+import { ProjectSelector } from '../projects/ProjectSelector';
 
 const { Option } = Select;
 
@@ -58,6 +60,7 @@ export const GanttPage: React.FC = () => {
   const { issues, fetchIssues, loading: issuesLoading } = useIssueStore();
   const { functions, fetchFunctions } = useFunctionStore();
   const { users, fetchUsers } = useUserStore();
+  const { currentProjectId, setCurrentProjectId } = useProjectStore();
   const [viewMode, setViewMode] = React.useState<ViewMode>(ViewMode.Day);
   const [showIssues, setShowIssues] = useState(true);
   
@@ -73,7 +76,7 @@ export const GanttPage: React.FC = () => {
     fetchIssues();
     fetchFunctions();
     fetchUsers();
-  }, [fetchTasks, fetchIssues, fetchFunctions, fetchUsers]);
+  }, [fetchTasks, fetchIssues, fetchFunctions, fetchUsers, currentProjectId]); // Reload when project changes
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -96,8 +99,9 @@ export const GanttPage: React.FC = () => {
       const matchesPhase = !phaseFilter || task.phase === phaseFilter;
       const matchesFunction = !functionFilter || task.functionId === functionFilter;
       const matchesAssignee = !assigneeFilter || task.assigneeId === assigneeFilter;
+      const matchesProject = !currentProjectId || task.projectId === currentProjectId;
       
-      return matchesSearch && matchesStatus && matchesPhase && matchesFunction && matchesAssignee;
+      return matchesSearch && matchesStatus && matchesPhase && matchesFunction && matchesAssignee && matchesProject;
     });
     
     // Filter tasks with valid dates
@@ -275,7 +279,7 @@ export const GanttPage: React.FC = () => {
     }
 
     return results;
-  }, [tasks, issues, showIssues, searchQuery, statusFilter, phaseFilter, functionFilter, assigneeFilter]);
+  }, [tasks, issues, showIssues, searchQuery, statusFilter, phaseFilter, functionFilter, assigneeFilter, currentProjectId]);
 
   if (isLoading || issuesLoading) {
     return (
@@ -366,6 +370,11 @@ export const GanttPage: React.FC = () => {
         
         {/* Filters */}
         <Space size="middle" wrap>
+          <ProjectSelector
+            value={currentProjectId}
+            onChange={setCurrentProjectId}
+            style={{ width: 200 }}
+          />
           <Input
             placeholder="Search tasks..."
             prefix={<SearchOutlined />}
