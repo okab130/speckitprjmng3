@@ -83,7 +83,7 @@ router.post('/', validate(createTaskSchema), async (req: AuthRequest, res: Respo
       return;
     }
 
-    const task = await TaskService.createTask(req.body, req.user.id);
+    const task = await TaskService.createTask(req.body, req.user.userId);
     
     // Broadcast task creation event
     await broadcastTaskEvent('task:created', task);

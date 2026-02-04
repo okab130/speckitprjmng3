@@ -75,11 +75,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const response = await api.post<Task>('/tasks', data);
       const newTask = response.data;
       
-      // Optimistic update: Add to local state immediately
-      set((state) => ({
-        tasks: [newTask, ...state.tasks],
-        isLoading: false,
-      }));
+      // Don't add to state here - let WebSocket event handle it
+      // This prevents duplicates when WebSocket broadcasts the same task
+      set({ isLoading: false });
       
       return newTask;
     } catch (error: any) {
@@ -223,10 +221,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   // WebSocket event handlers
   handleTaskCreated: (task: Task) => {
     set((state) => {
-      // Avoid duplicates
+      // Avoid duplicates - check if task already exists
       const exists = state.tasks.some((t) => t.id === task.id);
-      if (exists) return state;
+      if (exists) {
+        console.log('[TaskStore] Task already exists, skipping WebSocket duplicate:', task.id);
+        return state;
+      }
       
+      console.log('[TaskStore] Adding task from WebSocket:', task.id);
       return { tasks: [task, ...state.tasks] };
     });
   },

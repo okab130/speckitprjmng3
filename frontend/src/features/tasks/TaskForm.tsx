@@ -30,9 +30,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const { users, fetchUsers } = useUserStore();
 
   useEffect(() => {
+    console.log('[TaskForm] Fetching functions and users...');
     fetchFunctions();
     fetchUsers();
   }, [fetchFunctions, fetchUsers]);
+
+  useEffect(() => {
+    console.log('[TaskForm] Users state updated:', users);
+  }, [users]);
 
   // Populate form with task data in edit mode
   useEffect(() => {

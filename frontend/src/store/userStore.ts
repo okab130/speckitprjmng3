@@ -1,8 +1,6 @@
 import { create } from 'zustand';
-import axios from 'axios';
+import api from '../lib/api';
 import { User } from '../types/user';
-
-const API_BASE_URL = '/api';
 
 interface UserState {
   users: User[];
@@ -20,12 +18,12 @@ export const useUserStore = create<UserState>((set) => ({
   fetchUsers: async () => {
     set({ isLoading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get<User[]>(`${API_BASE_URL}/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('[UserStore] Fetching users...');
+      const response = await api.get<User[]>('/users');
+      console.log('[UserStore] Users fetched:', response.data);
       set({ users: response.data, isLoading: false });
     } catch (error: any) {
+      console.error('[UserStore] Failed to fetch users:', error);
       set({ error: error.response?.data?.error || 'Failed to fetch users', isLoading: false });
       throw error;
     }
