@@ -11,6 +11,7 @@ export interface Issue {
   createdAt: Date;
   dueDate?: Date;
   resolvedAt?: Date;
+  projectId?: string;
 }
 
 export interface IssueWithCreator extends Issue {

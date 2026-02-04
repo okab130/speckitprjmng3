@@ -12,6 +12,7 @@ import { IssuesPage } from './features/issues/IssuesPage';
 import { GanttPage } from './features/gantt';
 import { FunctionMasterPage } from './features/functions';
 import { ProjectsPage } from './features/projects/ProjectsPage';
+import { DashboardPage } from './features/dashboard/DashboardPage';
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -39,13 +40,14 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Routes>
+                    <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/tasks" element={<TasksPage />} />
                     <Route path="/kanban" element={<KanbanBoard />} />
                     <Route path="/gantt" element={<GanttPage />} />
                     <Route path="/issues" element={<IssuesPage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/functions" element={<FunctionMasterPage />} />
-                    <Route path="/" element={<Navigate to="/tasks" />} />
+                    <Route path="/" element={<Navigate to="/dashboard" />} />
                   </Routes>
                 </MainLayout>
               </ProtectedRoute>

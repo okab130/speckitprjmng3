@@ -38,6 +38,7 @@ export class TaskModel {
         function_id as "functionId",
         assignee_id as "assigneeId",
         project_id as "projectId",
+        completed_at as "completedAt",
         version,
         created_at as "createdAt",
         updated_at as "updatedAt"`,
@@ -75,6 +76,7 @@ export class TaskModel {
         t.function_id as "functionId",
         t.assignee_id as "assigneeId",
         t.project_id as "projectId",
+        t.completed_at as "completedAt",
         t.version,
         t.created_at as "createdAt",
         t.updated_at as "updatedAt",
@@ -209,9 +211,15 @@ export class TaskModel {
         phase = COALESCE($6, phase),
         function_id = COALESCE($7, function_id),
         assignee_id = COALESCE($8, assignee_id),
+        project_id = COALESCE($9, project_id),
+        completed_at = CASE 
+          WHEN $3 = 'Complete' AND status != 'Complete' THEN CURRENT_TIMESTAMP
+          WHEN $3 != 'Complete' THEN NULL
+          ELSE completed_at
+        END,
         version = version + 1,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $9 AND version = $10
+      WHERE id = $10 AND version = $11
       RETURNING 
         id, 
         title, 
@@ -223,6 +231,8 @@ export class TaskModel {
         phase,
         function_id as "functionId",
         assignee_id as "assigneeId",
+        project_id as "projectId",
+        completed_at as "completedAt",
         version,
         created_at as "createdAt",
         updated_at as "updatedAt"`,
@@ -235,6 +245,7 @@ export class TaskModel {
         data.phase,
         data.functionId,
         data.assigneeId,
+        data.projectId,
         id,
         data.version
       ]

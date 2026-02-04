@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, message, Popconfirm } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { useFunctionStore } from '../../store/functionStore';
 import { CreateFunctionDto } from '../../types/function';
 import type { ColumnsType } from 'antd/es/table';
@@ -16,6 +16,7 @@ interface FunctionData {
 const FunctionMasterPage: React.FC = () => {
   const { functions, isLoading, fetchFunctions, createFunction, deleteFunction } = useFunctionStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [duplicatingFunction, setDuplicatingFunction] = useState<FunctionData | null>(null);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -27,8 +28,7 @@ const FunctionMasterPage: React.FC = () => {
       const values = await form.validateFields();
       await createFunction(values as CreateFunctionDto);
       message.success('機能を登録しました');
-      setIsModalOpen(false);
-      form.resetFields();
+      handleModalClose();
     } catch (error: any) {
       if (error.response?.status === 409) {
         message.error('この機能は既に登録されています');
@@ -45,6 +45,22 @@ const FunctionMasterPage: React.FC = () => {
     } catch (error) {
       message.error('機能の削除に失敗しました');
     }
+  };
+
+  const handleDuplicate = (record: FunctionData) => {
+    setDuplicatingFunction(record);
+    form.setFieldsValue({
+      system_name: record.system_name,
+      function_name: record.function_name + ' (Copy)',
+      function_detail: record.function_detail,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setDuplicatingFunction(null);
+    form.resetFields();
   };
 
   const columns: ColumnsType<FunctionData> = [
@@ -73,17 +89,26 @@ const FunctionMasterPage: React.FC = () => {
       key: 'action',
       width: '15%',
       render: (_, record) => (
-        <Popconfirm
-          title="削除確認"
-          description="この機能を削除してもよろしいですか？"
-          onConfirm={() => handleDelete(record.id)}
-          okText="削除"
-          cancelText="キャンセル"
-        >
-          <Button type="link" danger icon={<DeleteOutlined />}>
-            削除
+        <Space>
+          <Button
+            type="link"
+            icon={<CopyOutlined />}
+            onClick={() => handleDuplicate(record)}
+          >
+            複製
           </Button>
-        </Popconfirm>
+          <Popconfirm
+            title="削除確認"
+            description="この機能を削除してもよろしいですか？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="削除"
+            cancelText="キャンセル"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              削除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -106,13 +131,10 @@ const FunctionMasterPage: React.FC = () => {
       />
 
       <Modal
-        title="機能の追加"
+        title={duplicatingFunction ? "機能の複製" : "機能の追加"}
         open={isModalOpen}
         onOk={handleCreate}
-        onCancel={() => {
-          setIsModalOpen(false);
-          form.resetFields();
-        }}
+        onCancel={handleModalClose}
         okText="登録"
         cancelText="キャンセル"
       >

@@ -30,6 +30,7 @@ export const TasksPage: React.FC = () => {
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [duplicatingTask, setDuplicatingTask] = useState<Task | null>(null);
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,6 +64,10 @@ export const TasksPage: React.FC = () => {
 
   const handleView = (task: Task) => {
     setViewingTask(task);
+  };
+
+  const handleDuplicate = (task: Task) => {
+    setDuplicatingTask(task);
   };
 
   const handleRefresh = () => {
@@ -205,6 +210,7 @@ export const TasksPage: React.FC = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onView={handleView}
+            onDuplicate={handleDuplicate}
           />
         </Space>
       </Card>
@@ -247,6 +253,22 @@ export const TasksPage: React.FC = () => {
         onClose={() => setViewingTask(null)}
         onUpdate={handleUpdate}
       />
+
+      {/* Duplicate Task Drawer */}
+      <Drawer
+        title="Duplicate Task"
+        placement="right"
+        width={600}
+        open={!!duplicatingTask}
+        onClose={() => setDuplicatingTask(null)}
+        destroyOnClose
+      >
+        <TaskForm
+          task={duplicatingTask ? { ...duplicatingTask, id: '', title: `${duplicatingTask.title} (Copy)` } as Task : null}
+          onSubmit={handleCreate as any}
+          onCancel={() => setDuplicatingTask(null)}
+        />
+      </Drawer>
     </div>
   );
 };

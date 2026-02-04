@@ -7,6 +7,7 @@ import {
   AppstoreOutlined,
   DatabaseOutlined,
   FolderOutlined,
+  DashboardOutlined,
   LogoutOutlined 
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -24,6 +25,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, logout } = useAuthStore();
 
   const menuItems = [
+    {
+      key: '/dashboard',
+      icon: <DashboardOutlined />,
+      label: 'ダッシュボード',
+    },
     {
       key: '/projects',
       icon: <FolderOutlined />,

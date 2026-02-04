@@ -68,11 +68,9 @@ export const useIssueStore = create<IssueState>((set) => ({
       const response = await api.post('/issues', issueData);
       const newIssue = response.data;
       
-      // Optimistically add to state
-      set((state) => ({
-        issues: [newIssue, ...state.issues],
-        loading: false,
-      }));
+      // Don't add to state here - let WebSocket event handle it
+      // This prevents duplicates when WebSocket broadcasts the same issue
+      set({ loading: false });
       
       return newIssue;
     } catch (error: any) {

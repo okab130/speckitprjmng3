@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Tag, Button, Space, Popconfirm, Typography, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { Task, TaskStatus } from '../../types/task';
@@ -13,6 +13,7 @@ interface TaskListProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onView: (task: Task) => void;
+  onDuplicate?: (task: Task) => void;
 }
 
 // Status badge colors
@@ -28,6 +29,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onEdit,
   onDelete,
   onView,
+  onDuplicate,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -126,7 +128,7 @@ export const TaskList: React.FC<TaskListProps> = ({
     {
       title: 'Actions',
       key: 'actions',
-      width: '10%',
+      width: '12%',
       render: (_, record: Task) => (
         <Space size="small">
           <Tooltip title="View details">
@@ -144,6 +146,15 @@ export const TaskList: React.FC<TaskListProps> = ({
               onClick={() => onEdit(record)}
             />
           </Tooltip>
+          {onDuplicate && (
+            <Tooltip title="Duplicate task">
+              <Button
+                icon={<CopyOutlined />}
+                size="small"
+                onClick={() => onDuplicate(record)}
+              />
+            </Tooltip>
+          )}
           <Tooltip title="Delete task">
             <Popconfirm
               title="Are you sure you want to delete this task?"

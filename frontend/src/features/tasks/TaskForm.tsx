@@ -35,16 +35,25 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     console.log('[TaskForm] Fetching functions, users, and projects...');
     fetchFunctions();
     fetchUsers();
-    fetchProjects({ status: 'Active' });
+    fetchProjects(); // Remove status filter to show all projects
   }, [fetchFunctions, fetchUsers, fetchProjects]);
 
   useEffect(() => {
     console.log('[TaskForm] Users state updated:', users);
   }, [users]);
 
+  useEffect(() => {
+    console.log('[TaskForm] Projects state updated:', projects);
+  }, [projects]);
+
   // Populate form with task data in edit mode
   useEffect(() => {
     if (task) {
+      console.log('[TaskForm] Setting task data:', task);
+      console.log('[TaskForm] Task projectId:', task.projectId);
+      console.log('[TaskForm] Available projects:', projects);
+      console.log('[TaskForm] Project exists?', projects.find(p => p.id === task.projectId));
+      
       form.setFieldsValue({
         title: task.title,
         description: task.description || '',
@@ -56,7 +65,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         dateRange: task.startDate && task.endDate
           ? [dayjs(task.startDate), dayjs(task.endDate)]
           : undefined,
+        completedAt: task.completedAt ? dayjs(task.completedAt) : undefined,
       });
+      
+      console.log('[TaskForm] Form values after set:', form.getFieldsValue());
     } else {
       // For new tasks, set default project if one is selected
       form.resetFields();
@@ -64,7 +76,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         form.setFieldsValue({ projectId: currentProjectId });
       }
     }
-  }, [task, form, currentProjectId]);
+  }, [task, form, currentProjectId, projects]); // Add projects as dependency
 
   const handleSubmit = async (values: any) => {
     setIsSubmitting(true);
@@ -81,8 +93,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         functionId: values.functionId || undefined,
         assigneeId: values.assigneeId || undefined,
         projectId: values.projectId || undefined,
-        functionId: values.functionId || undefined,
-        assigneeId: values.assigneeId || undefined,
+        completedAt: values.completedAt ? values.completedAt.format('YYYY-MM-DD') : undefined,
         ...(task && { version: task.version }), // Include version for updates
       };
 
@@ -238,6 +249,29 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           format="YYYY-MM-DD"
           style={{ width: '100%' }}
         />
+      </Form.Item>
+
+      <Form.Item
+        noStyle
+        shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}
+      >
+        {({ getFieldValue }) =>
+          getFieldValue('status') === 'Complete' ? (
+            <Form.Item
+              name="completedAt"
+              label="完了日"
+              rules={[
+                { required: true, message: 'ステータスがCompleteの場合、完了日を入力してください' }
+              ]}
+            >
+              <DatePicker
+                format="YYYY-MM-DD"
+                style={{ width: '100%' }}
+                placeholder="完了日を選択"
+              />
+            </Form.Item>
+          ) : null
+        }
       </Form.Item>
 
       <Form.Item>

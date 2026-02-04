@@ -16,33 +16,48 @@ const { Option } = Select;
 /**
  * Safe date conversion utility
  * Converts string | Date | undefined to Date or null
+ * For end dates, adds 1 day to include the full day in the Gantt chart
  */
-const toDate = (value: string | Date | undefined | null): Date | null => {
+const toDate = (value: string | Date | undefined | null, isEndDate: boolean = false): Date | null => {
   if (!value) return null;
+  
+  let date: Date;
   
   // Already a Date object
   if (value instanceof Date) {
-    return isNaN(value.getTime()) ? null : value;
-  }
-  
-  // String conversion
-  if (typeof value === 'string') {
+    date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+  } else if (typeof value === 'string') {
+    // String conversion
     const trimmed = value.trim();
     if (trimmed === '') return null;
     
-    const date = new Date(trimmed);
-    return isNaN(date.getTime()) ? null : date;
+    // If it's a date-only string (YYYY-MM-DD), set time to noon to avoid timezone issues
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      date = new Date(trimmed + 'T12:00:00');
+    } else {
+      date = new Date(trimmed);
+    }
+    
+    if (isNaN(date.getTime())) return null;
+  } else {
+    return null;
   }
   
-  return null;
+  // For end dates in Gantt chart, add 1 day to include the full day
+  if (isEndDate) {
+    date.setDate(date.getDate() + 1);
+  }
+  
+  return date;
 };
 
 /**
  * Check if a task has valid dates
  */
 const hasValidDates = (task: any): boolean => {
-  const start = toDate(task.startDate);
-  const end = toDate(task.endDate);
+  const start = toDate(task.startDate, false);
+  const end = toDate(task.endDate, false);
   return start !== null && end !== null;
 };
 
@@ -50,8 +65,8 @@ const hasValidDates = (task: any): boolean => {
  * Check if an issue has valid dates
  */
 const hasValidIssueDates = (issue: any): boolean => {
-  const start = toDate(issue.createdAt);
-  const end = toDate(issue.dueDate);
+  const start = toDate(issue.createdAt, false);
+  const end = toDate(issue.dueDate, false);
   return start !== null && end !== null;
 };
 
@@ -113,8 +128,8 @@ export const GanttPage: React.FC = () => {
     
     // Process tasks
     filteredTasks.forEach((task, index) => {
-      const startDate = toDate(task.startDate);
-      const endDate = toDate(task.endDate);
+      const startDate = toDate(task.startDate, false);
+      const endDate = toDate(task.endDate, true); // Add 1 day for end date
       
       if (!startDate || !endDate) {
         console.warn(`⚠️ Task "${task.title}" has invalid dates despite filter`);
@@ -204,8 +219,8 @@ export const GanttPage: React.FC = () => {
       console.log(`Issues with valid dates: ${filteredIssues.length}`);
       
       filteredIssues.forEach((issue, index) => {
-        const startDate = toDate(issue.createdAt);
-        const endDate = toDate(issue.dueDate);
+        const startDate = toDate(issue.createdAt, false);
+        const endDate = toDate(issue.dueDate, true); // Add 1 day for end date
         
         if (!startDate || !endDate) {
           console.warn(`⚠️ Issue "${issue.title}" has invalid dates despite filter`);
@@ -277,6 +292,9 @@ export const GanttPage: React.FC = () => {
         });
       });
     }
+
+    // Sort by start date (earliest first)
+    results.sort((a, b) => a.start.getTime() - b.start.getTime());
 
     return results;
   }, [tasks, issues, showIssues, searchQuery, statusFilter, phaseFilter, functionFilter, assigneeFilter, currentProjectId]);

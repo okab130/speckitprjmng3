@@ -20,6 +20,7 @@ export interface Task {
   functionName?: string;
   functionDetail?: string;
   projectId?: string;
+  completedAt?: string | Date;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +54,7 @@ export interface UpdateTaskInput {
   functionId?: string;
   assigneeId?: string;
   projectId?: string;
+  completedAt?: string;
   version: number;
 }
 

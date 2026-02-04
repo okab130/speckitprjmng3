@@ -33,6 +33,7 @@ import issueCommentRoutes from './api/issueComments';
 import functionRoutes from './api/functions';
 import userRoutes from './api/users';
 import projectRoutes from './api/projects';
+import dashboardRoutes from './api/dashboard';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -41,6 +42,7 @@ app.use('/api/issues', issueCommentRoutes);
 app.use('/api/functions', functionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

@@ -13,6 +13,7 @@ export interface Task {
   functionId?: string;
   assigneeId?: string;
   projectId?: string;
+  completedAt?: Date;
   version: number;
   createdAt: Date;
   updatedAt: Date;

@@ -77,6 +77,7 @@ export const KanbanBoard: React.FC = () => {
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [isIssueDetailVisible, setIsIssueDetailVisible] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [showRecentOnly, setShowRecentOnly] = useState(true); // Default ON
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -129,6 +130,32 @@ export const KanbanBoard: React.FC = () => {
         const matchesAssignee = !assigneeFilter || task.assigneeId === assigneeFilter;
         const matchesProject = !currentProjectId || task.projectId === currentProjectId;
         
+        // Apply "Recent Only" filter
+        if (showRecentOnly) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const past15Days = new Date(today);
+          past15Days.setDate(past15Days.getDate() - 15);
+          const future15Days = new Date(today);
+          future15Days.setDate(future15Days.getDate() + 15);
+          
+          if (task.status === 'To Do') {
+            // To Do: Show only if starts within next 15 days
+            if (task.startDate) {
+              const startDate = new Date(task.startDate);
+              if (startDate > future15Days) {
+                return false;
+              }
+            }
+          } else if (task.status === 'Complete') {
+            // Complete: Show only if completed within past 15 days
+            const completedDate = task.completedAt ? new Date(task.completedAt) : (task.endDate ? new Date(task.endDate) : null);
+            if (completedDate && completedDate < past15Days) {
+              return false;
+            }
+          }
+        }
+        
         return matchesSearch && matchesPhase && matchesFunction && matchesAssignee && matchesProject;
       })
       .forEach((task) => {
@@ -145,7 +172,7 @@ export const KanbanBoard: React.FC = () => {
     });
 
     setGroupedTasks(grouped);
-  }, [tasks, searchQuery, phaseFilter, functionFilter, assigneeFilter, currentProjectId]);
+  }, [tasks, searchQuery, phaseFilter, functionFilter, assigneeFilter, currentProjectId, showRecentOnly]);
 
   // Update grouped issues when issues state changes
   useEffect(() => {
@@ -162,6 +189,19 @@ export const KanbanBoard: React.FC = () => {
         const matchesSearch = !searchQuery || 
           issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           issue.description.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        // Apply "Recent Only" filter for Complete issues
+        if (showRecentOnly && issue.status === 'Complete') {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const past15Days = new Date(today);
+          past15Days.setDate(past15Days.getDate() - 15);
+          
+          const completedDate = issue.completedAt ? new Date(issue.completedAt) : (issue.dueDate ? new Date(issue.dueDate) : null);
+          if (completedDate && completedDate < past15Days) {
+            return false;
+          }
+        }
         
         return matchesSearch;
       })
@@ -185,7 +225,7 @@ export const KanbanBoard: React.FC = () => {
     });
 
     setGroupedIssues(grouped);
-  }, [issues, searchQuery]);
+  }, [issues, searchQuery, showRecentOnly]);
 
   // Combine tasks and issues into unified kanban items
   useEffect(() => {
@@ -477,6 +517,17 @@ export const KanbanBoard: React.FC = () => {
           <Button onClick={handleClearFilters}>
             フィルタをクリア
           </Button>
+          <Checkbox 
+            checked={showRecentOnly} 
+            onChange={(e) => setShowRecentOnly(e.target.checked)}
+          >
+            直近のみ表示
+          </Checkbox>
+          {showRecentOnly && (
+            <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              (Todo: 未来15日以内開始, Complete: 過去15日以内完了)
+            </span>
+          )}
         </Space>
       </Card>
 
